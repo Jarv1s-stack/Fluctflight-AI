@@ -141,22 +141,17 @@ function speak(text, onProgress) {
       setStatus('speaking', 'Говорит…');
       window.Fluctlight?.setThinking(false);
       window.Fluctlight?.setSpeaking(true);
-       window.Fluctlight?.setLevel(0.62);
     };
     utter.onboundary = (e) => {
       boundaryFired = true;
       const idx = Math.min(text.length, (e.charIndex || 0) + (e.charLength || 1));
       onProgress?.(text.slice(0, idx));
-       const wordLength = Math.max(1, e.charLength || 1);
-       const intensity = Math.min(1, 0.36 + wordLength / 18);
-       window.Fluctlight?.setLevel(intensity);
-       window.Fluctlight?.pulse(0.5 + intensity * 0.38);
+      window.Fluctlight?.pulse(0.5);
     };
     const finish = () => {
       clearInterval(fallback);
       onProgress?.(text);
       window.Fluctlight?.setSpeaking(false);
-       window.Fluctlight?.setLevel(0);
       setStatus('idle', 'Спросите про Ayan');
       resolve();
     };
@@ -164,12 +159,10 @@ function speak(text, onProgress) {
     utter.onerror = finish;
 
     // gentle pulse loop for engines that don't emit boundary events
-     const fallback = setInterval(() => {
+    const fallback = setInterval(() => {
       if (!window.speechSynthesis.speaking) { clearInterval(fallback); return; }
-       const meter = 0.38 + Math.abs(Math.sin(performance.now() / 115)) * 0.5;
-       window.Fluctlight?.setLevel(boundaryFired ? meter * 0.86 : meter);
-       if (!boundaryFired) window.Fluctlight?.pulse(0.28);
-     }, 120);
+      if (!boundaryFired) window.Fluctlight?.pulse(0.28);
+    }, 260);
 
     window.speechSynthesis.speak(utter);
   });

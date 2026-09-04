@@ -215,6 +215,13 @@ input[type="range"]:focus-visible { outline: 1px solid var(--accent); outline-of
 }
 .presets button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
+
+.chat__suggestions { display:flex; flex-wrap:wrap; gap:5px; }
+.chat__suggestions button { all:unset; cursor:pointer; padding:5px 8px; border:1px solid var(--line); border-radius:2px; color:var(--ink-dim); font:inherit; font-size:.58rem; letter-spacing:.02em; transition:color .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease); }
+.chat__suggestions button:hover { color:var(--accent); border-color:rgba(82,232,212,.42); background:rgba(82,232,212,.06); }
+.chat__suggestions button:focus-visible { outline:1px solid var(--accent); outline-offset:1px; }
+@media (max-width:640px) { .chat__suggestions { gap:4px; } .chat__suggestions button { font-size:.54rem; } }
+
 /* ---------- chat ---------- */
 .hud--chat {
   right: clamp(16px, 3vw, 32px);
