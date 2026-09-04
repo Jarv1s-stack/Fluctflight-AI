@@ -150,7 +150,6 @@ const U = {
  * ------------------------------------------------------------------- */
 const voice = {
   energy: 0,
-  level: 0, levelTarget: 0,
   speaking: 0, speakingTarget: 0,
   listening: 0, listeningTarget: 0,
   thinking: 0, thinkingTarget: 0,
@@ -161,9 +160,6 @@ window.Fluctlight = {
   pulse(amount = 0.5) {
     voice.energy = Math.min(1.6, voice.energy + amount);
     voice.flash = Math.min(1, voice.flash + amount * 0.9);
-  },
-  setLevel(amount = 0) {
-    voice.levelTarget = THREE.MathUtils.clamp(amount, 0, 1);
   },
   setSpeaking(on) { voice.speakingTarget = on ? 1 : 0; },
   setListening(on) { voice.listeningTarget = on ? 1 : 0; },
@@ -499,35 +495,6 @@ const rings = [
 ];
 rings.forEach((r) => group.add(r));
 
-/* ------------------------------ voice halos ------------------------ */
-// Two transparent rings turn speech into a visible expanding waveform.
-// They stay quiet at idle, then bloom, rotate and breathe around the core.
-const voiceHalo = new THREE.Mesh(
-  new THREE.RingGeometry(1.02, 1.045, 128),
-  new THREE.MeshBasicMaterial({
-    color: 0x9ffff4,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
-  }),
-);
-const voiceHaloEcho = new THREE.Mesh(
-  new THREE.RingGeometry(1.3, 1.318, 128),
-  new THREE.MeshBasicMaterial({
-    color: 0x65cfff,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
-  }),
-);
-voiceHalo.rotation.set(0.28, -0.18, 0);
-voiceHaloEcho.rotation.set(-0.4, 0.38, 0);
-group.add(voiceHalo, voiceHaloEcho);
-
 /* ------------------------------ glitch bands ---------------------- */
 
 const bands = [];
@@ -725,41 +692,21 @@ function animate() {
   voice.speaking += (voice.speakingTarget - voice.speaking) * Math.min(1, dt * 4);
   voice.listening += (voice.listeningTarget - voice.listening) * Math.min(1, dt * 4);
   voice.thinking += (voice.thinkingTarget - voice.thinking) * Math.min(1, dt * 3);
-  voice.level += (voice.levelTarget - voice.level) * Math.min(1, dt * 12);
   voice.energy *= Math.pow(0.015, dt);
   voice.flash *= Math.pow(0.006, dt);
 
-  const speech = Math.max(voice.level, voice.speaking * 0.72, voice.listening * 0.56, voice.thinking * 0.28);
-  const voiceWave = 0.5 + 0.5 * Math.sin(t * (5.5 + speech * 8.0));
-  const voiceBeat = speech * (0.42 + voiceWave * 0.58);
-
-  group.rotation.y += dt * 0.05 * (0.3 + params.chaos) * (1 + voice.speaking * 0.8 + voice.level * 0.35);
-  group.rotation.z += dt * 0.018 * voiceBeat;
-  const breathing = 1 + voiceBeat * 0.045 + voice.energy * 0.018;
-  group.scale.setScalar(breathing);
-  group.position.y = Math.sin(t * (0.55 + speech * 1.6)) * (0.018 + voiceBeat * 0.055);
+  group.rotation.y += dt * 0.05 * (0.3 + params.chaos) * (1 + voice.speaking * 0.5);
   // speaking adds a faster head-nod-like wobble; thinking a slow, searching drift
-  const wobbleAmp = 0.06 * (1 + voice.speaking * 0.95 + voice.level * 0.4) + voice.thinking * 0.03;
-  const wobbleFreq = 0.13 + voice.speaking * 0.45 + voice.level * 0.18 + voice.thinking * 0.05;
+  const wobbleAmp = 0.06 * (1 + voice.speaking * 0.7) + voice.thinking * 0.03;
+  const wobbleFreq = 0.13 + voice.speaking * 0.35 + voice.thinking * 0.05;
   group.rotation.x = Math.sin(t * wobbleFreq) * wobbleAmp;
-  filaments.rotation.y -= dt * 0.035 * (0.4 + params.chaos + voiceBeat * 1.8);
-  filaments.rotation.x = Math.sin(t * (0.16 + speech * 0.55)) * (0.02 + voiceBeat * 0.08);
+  filaments.rotation.y -= dt * 0.035 * (0.4 + params.chaos);
   // rings spin up while the reply is spoken, giving the orb a distinct
   // "voice" gait instead of just brightness changes
-  const ringBoost = 1 + voice.speaking * 1.9 + voice.level * 1.35 + voice.thinking * 0.4;
+  const ringBoost = 1 + voice.speaking * 1.6 + voice.thinking * 0.4;
   rings[0].rotation.z += dt * 0.09 * ringBoost;
   rings[1].rotation.x -= dt * 0.06 * ringBoost;
   rings[2].rotation.y += dt * 0.12 * ringBoost;
-  voiceHalo.rotation.z += dt * (0.28 + voiceBeat * 2.2);
-  voiceHalo.rotation.x += dt * (0.04 + voiceBeat * 0.26);
-  voiceHaloEcho.rotation.z -= dt * (0.22 + voiceBeat * 1.6);
-  voiceHaloEcho.rotation.y -= dt * (0.05 + voiceBeat * 0.22);
-  const haloScale = 1.0 + voiceBeat * (0.7 + voiceWave * 0.35);
-  const echoScale = 1.0 + voiceBeat * (1.0 + (1 - voiceWave) * 0.45);
-  voiceHalo.scale.setScalar(haloScale);
-  voiceHaloEcho.scale.setScalar(echoScale);
-  voiceHalo.material.opacity = Math.min(0.72, voiceBeat * (0.18 + voiceWave * 0.42));
-  voiceHaloEcho.material.opacity = Math.min(0.42, voiceBeat * (0.10 + (1 - voiceWave) * 0.28));
 
   // glitch bands blink at random intervals, more often under load and
   // markedly more often while actually speaking a reply
@@ -774,11 +721,11 @@ function animate() {
     b.material.uniforms.uOn.value = b.userData.on;
   }
 
-  U.uPulse.value = Math.min(1.5, params.pulse + voice.energy * 0.65 + voiceBeat * 0.34 + voice.speaking * 0.14 + voice.thinking * 0.08);
-  U.uChaos.value = Math.min(1.2, params.chaos + voice.speaking * 0.14 + voice.listening * 0.09 + voiceBeat * 0.10 + voice.thinking * 0.08);
-  bloom.strength = params.glow + voice.energy * 0.32 + voiceBeat * 0.26 + voice.speaking * 0.1 + voice.thinking * 0.05;
+  U.uPulse.value = Math.min(1.5, params.pulse + voice.energy * 0.65 + voice.speaking * 0.14 + voice.thinking * 0.08);
+  U.uChaos.value = Math.min(1.2, params.chaos + voice.speaking * 0.10 + voice.listening * 0.06 + voice.thinking * 0.08);
+  bloom.strength = params.glow + voice.energy * 0.32 + voice.speaking * 0.1 + voice.thinking * 0.05;
 
-  gradePass.uniforms.uAberr.value = 0.0016 + params.chaos * 0.0042 + voice.energy * 0.0018 + voiceBeat * 0.0034;
+  gradePass.uniforms.uAberr.value = 0.0016 + params.chaos * 0.0042 + voice.energy * 0.0018;
 
   // core briefly warms from cyan toward gold on each spoken word, then
   // eases back — a visible "voice" tell distinct from the ambient pulse
