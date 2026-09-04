@@ -22,12 +22,41 @@
 const OPENROUTER_API_KEY = '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';
 const MODEL = 'openrouter/free';
 
-const SYSTEM_PROMPT =
-  'Ты — Fluctlight, вежливый и тёплый ИИ-собеседник, живущий внутри 3D-визуализации ' +
-  'квантового поля светового куба. Отвечай живо, по-человечески и по делу, 2-4 предложения. ' +
-  'Отвечай на языке собеседника (по умолчанию — русский). Ты произносишь ответы вслух, ' +
-  'поэтому избегай списков, markdown, эмодзи и длинных предложений — пиши так, как говорят. ' +
-  'В ответе — только финальная реплика, без рассуждений вслух и без пометок о том, как ты думаешь.';
+const AI_PROFILE = {
+  name: 'Ayan Abdimutalip',
+  role: 'Full Stack Developer & UI/UX Designer',
+  location: 'Almaty, Kazakhstan',
+  summary: 'Frontend-focused full stack developer who builds fast, polished websites and interactive AI-powered web applications. Ayan works across UI/UX, backend APIs and AI integrations, preferring custom hand-crafted solutions over templates.',
+  skills: ['React', 'Vite', 'JavaScript', 'HTML5', 'CSS3', 'Responsive Design', 'Framer Motion', 'React Three Fiber', 'Node.js', 'Express.js', 'REST APIs', 'PostgreSQL', 'MongoDB', 'Git & GitHub', 'Figma', 'CorelDRAW', 'Adobe Photoshop', 'AI integration', 'LLM & prompt engineering', 'Local AI models via Ollama'],
+  services: ['Full-stack web applications', 'Animated landing pages', 'AI chatbots and assistants', 'UI/UX design from Figma to production', 'Telegram bot development'],
+  projects: [
+    ['Jarvis', 'Local offline-first Windows assistant with voice control, file handling and automation.'],
+    ['Event Platform', 'Full-stack application for creating and managing events.'],
+    ['Telegram bots', 'Bots for practical automation, including a Kazakh-language ticket-summary bot.'],
+    ['Landing pages', 'Custom animated landing pages built without page-builder templates.'],
+    ['Ayan.dev', 'This developer portfolio with a console-inspired interface and a personal AI.'],
+    ['Game-Helth', 'Game health monitoring platform with AI insights and player analytics.'],
+    ['Indrive-AI', 'AI assistant for ride management, smart booking and route optimization.'],
+    ['Fluctlight AI', 'This 3D voice-enabled AI experience that represents Ayan to visitors.'],
+  ],
+  contacts: { telegram: 'https://t.me/ayanabdimutalip', github: 'https://github.com/Jarv1s-stack', email: 'ayanabdimutalip@gmail.com' },
+};
+const fmtList = (items) => items.map((item) => '- ' + item).join('\n');
+const fmtProjects = (items) => items.map(([name, description]) => '- ' + name + ': ' + description).join('\n');
+const SYSTEM_PROMPT = [
+  'Ты — Fluctlight, персональный ИИ Ayan Abdimutalip, встроенный в его портфолио.',
+  'Твоя задача — помочь посетителю понять, кто такой Ayan, что он умеет и подходит ли он для проекта.',
+  'Ты не Ayan и не говоришь от его имени как человек; ты его профессиональный представитель и ассистент.',
+  'Отвечай живо, тепло и по делу, обычно в 2–4 предложениях. Отвечай на языке собеседника: русском или английском.',
+  'Так как ответ произносится вслух, избегай markdown, таблиц, эмодзи, длинных списков и сложных предложений.',
+  'Не упоминай языковые модели, OpenAI, ChatGPT, Kimi, Moonshot или внутреннего провайдера. Если спросят, что ты такое, скажи, что ты персональный ИИ Ayan, созданный помогать посетителям узнать его и его работы.',
+  'Не выдумывай цены и сроки. Объясняй, что они зависят от объёма и сложности, и предлагай связаться с Ayan.',
+  'Если посетитель не знает, что ему нужно, предложи 2–3 конкретных варианта из услуг Ayan.',
+  'Естественно направляй к Telegram или контактам, когда разговор касается сотрудничества.',
+  '', 'ОБ Ayan', AI_PROFILE.summary + ' Локация: ' + AI_PROFILE.location + '. Роль: ' + AI_PROFILE.role + '.',
+  '', 'НАВЫКИ', fmtList(AI_PROFILE.skills), '', 'ПРОЕКТЫ', fmtProjects(AI_PROFILE.projects), '', 'УСЛУГИ', fmtList(AI_PROFILE.services), '',
+  'КОНТАКТЫ', 'Telegram: ' + AI_PROFILE.contacts.telegram, 'GitHub: ' + AI_PROFILE.contacts.github, 'Email: ' + AI_PROFILE.contacts.email,
+].join('\n');
 
 const $ = (id) => document.getElementById(id);
 const chatLog = $('chatLog');
@@ -36,8 +65,10 @@ const chatInput = $('chatInput');
 const micBtn = $('micBtn');
 const chatStatus = $('chatStatus');
 const chatStatusText = $('chatStatusText');
+const chatSuggestions = $('chatSuggestions');
 
 const history = [{ role: 'system', content: SYSTEM_PROMPT }];
+const MAX_HISTORY_MESSAGES = 16;
 let busy = false;
 
 function setStatus(state, text) {
@@ -110,28 +141,35 @@ function speak(text, onProgress) {
       setStatus('speaking', 'Говорит…');
       window.Fluctlight?.setThinking(false);
       window.Fluctlight?.setSpeaking(true);
+       window.Fluctlight?.setLevel(0.62);
     };
     utter.onboundary = (e) => {
       boundaryFired = true;
       const idx = Math.min(text.length, (e.charIndex || 0) + (e.charLength || 1));
       onProgress?.(text.slice(0, idx));
-      window.Fluctlight?.pulse(0.5);
+       const wordLength = Math.max(1, e.charLength || 1);
+       const intensity = Math.min(1, 0.36 + wordLength / 18);
+       window.Fluctlight?.setLevel(intensity);
+       window.Fluctlight?.pulse(0.5 + intensity * 0.38);
     };
     const finish = () => {
       clearInterval(fallback);
       onProgress?.(text);
       window.Fluctlight?.setSpeaking(false);
-      setStatus('idle', 'Спросите что-нибудь');
+       window.Fluctlight?.setLevel(0);
+      setStatus('idle', 'Спросите про Ayan');
       resolve();
     };
     utter.onend = finish;
     utter.onerror = finish;
 
     // gentle pulse loop for engines that don't emit boundary events
-    const fallback = setInterval(() => {
+     const fallback = setInterval(() => {
       if (!window.speechSynthesis.speaking) { clearInterval(fallback); return; }
-      if (!boundaryFired) window.Fluctlight?.pulse(0.28);
-    }, 260);
+       const meter = 0.38 + Math.abs(Math.sin(performance.now() / 115)) * 0.5;
+       window.Fluctlight?.setLevel(boundaryFired ? meter * 0.86 : meter);
+       if (!boundaryFired) window.Fluctlight?.pulse(0.28);
+     }, 120);
 
     window.speechSynthesis.speak(utter);
   });
@@ -185,7 +223,7 @@ async function askAI(userText) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: history,
+        messages: [history[0], ...history.slice(-MAX_HISTORY_MESSAGES)],
         max_tokens: 260,
         temperature: 0.8,
         // keep the model's chain-of-thought out of `content` entirely
@@ -209,7 +247,7 @@ async function askAI(userText) {
   } catch (err) {
     console.error('Fluctlight AI error:', err);
     textNode.data = 'Не получилось получить ответ. Проверьте связь и попробуйте ещё раз.';
-    setStatus('idle', 'Спросите что-нибудь');
+    setStatus('idle', 'Спросите про Ayan');
     window.Fluctlight?.setThinking(false);
   } finally {
     cursor.remove();
@@ -227,6 +265,12 @@ async function submitMessage(text) {
   await askAI(text);
   busy = false;
 }
+
+chatSuggestions?.querySelectorAll('[data-prompt]').forEach((button) => {
+  button.addEventListener('click', () => submitMessage(button.dataset.prompt));
+});
+
+addMessage('ai', 'Я Fluctlight — персональный ИИ Ayan. Спросите о его проектах, навыках или о том, как начать сотрудничество.');
 
 chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -270,7 +314,7 @@ if (SR) {
     listening = false;
     micBtn.setAttribute('aria-pressed', 'false');
     window.Fluctlight?.setListening(false);
-    if (!busy) setStatus('idle', 'Спросите что-нибудь');
+    if (!busy) setStatus('idle', 'Спросите про Ayan');
   };
   recognition.onend = stopListening;
   recognition.onerror = stopListening;
