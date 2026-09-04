@@ -20,7 +20,7 @@
  * ------------------------------------------------------------------ */
 
 const OPENROUTER_API_KEY = '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';
-const MODEL = 'nvidia/nemotron-3-nano-30b-a3b:free';
+const MODEL = 'openrouter/free';
 
 const SYSTEM_PROMPT =
   'Ты — Fluctlight, вежливый и тёплый ИИ-собеседник, живущий внутри 3D-визуализации ' +
